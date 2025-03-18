@@ -25,6 +25,7 @@ const useStore = create((set) => ({
       },
     })),
   resetAll: () => set({ counts: {} }), // Optional: Reset all counts
+  
 }));
 
 export default useStore;

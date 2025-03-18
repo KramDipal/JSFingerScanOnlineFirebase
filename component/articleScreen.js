@@ -1,28 +1,23 @@
 import React, { useRef, useState, useMemo } from 'react';
 import { StyleSheet, View, ScrollView, Image, Dimensions, Text, Alert, TouchableOpacity, FlatList, Modal } from 'react-native';
-// import BottomSheet from '@gorhom/bottom-sheet';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
-import useStore from "../store";
-import { Ionicons } from '@expo/vector-icons'
-
-import 'react-native-get-random-values'; // Must be imported first
+import BottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
+import useStore from '../store';
+import { Ionicons } from '@expo/vector-icons';
+import 'react-native-get-random-values';
 import { v4 as uuidv4 } from 'uuid';
 
 const { height } = Dimensions.get('window');
 
 export default function ArticleScreenComp() {
   const bottomSheetRef = useRef(null);
-  const [currentIndex, setCurrentIndex] = useState(1);
-  const [handlePress, setHandlePress] = useState('');
-  const  [modal, setModal] = useState('');
+  const [currentIndex, setCurrentIndex] = useState(1); // Default to bkmenulist
+  const [menuList, setMenuList] = useState([]); // Initialize as empty
+  const { label, counts, increment, decrement, reset, resetAll } = useStore();
+  const [modalCheckOutVisible, setModalCheckOutVisible] = useState(false);
 
-  const { label, count, increment, decrement, reset } = useStore(); // Destructure state and actions
-
-  // Snap points for the bottom sheet (e.g., 25% and 75% of screen height)
   const snapPoints = ['25%', '50%'];
 
-  // Sample image URLs (replace with your own)
   const images = [
     require('../assets/images/aw.png'),
     require('../assets/images/bk.png'),
@@ -66,164 +61,180 @@ export default function ArticleScreenComp() {
     require('../assets/bkmenulist/soda.jpg'),
   ];
 
-  const [ menuList, setMenuList ] = useState(bkmenulist);
   const handlePressFunc = (index) => {
-    // Alert.alert('Pressed ' + index);
     const menuListArray = [null, bkmenulist, null, mcdomenulist, null, wendysmenulist];
     setCurrentIndex(index);
 
-    if(menuListArray[index] === null){
+    if (menuListArray[index] === null) {
       Alert.alert('No menu list found!');
       setMenuList([]);
       return;
     }
     setMenuList(menuListArray[index]);
-
-  }
+  };
 
   const handlePressModal = () => {
-    Alert.alert('Modal Pressed ');
-    setModal(true);
-  }
+    // Alert.alert('Check Out Item');
+    setModalCheckOutVisible(true);
+  };
 
-  // Preprocess data to add IDs
+  // Preprocess menuList dynamically based on the current menuList state
   const menuListTest = useMemo(() => {
-    return bkmenulist.map((item) => ({
-      ...item,
-      id: uuidv4(), // Add a unique ID to each item
+    return menuList.map((imageSource) => ({
+      source: imageSource,
+      id: uuidv4(), //generate unique id for each item
     }));
-  }, []); // Empty dependency array since rawImageData is static here
+  }, [menuList]); // Depend on menuList so it updates when menuList changes
 
   const renderItem = ({ item }) => (
     <>
-    {/* <TouchableOpacity onPress={() => bottomSheetRef.current.expand()}> */}
-        <Image
-            // key={index}
-            source={item}
-            style={styles.imageFlatlist}
-            resizeMode="cover"
-        />
-    {/* </TouchableOpacity> */}
-
-    <View style={{flexDirection:'row', position:'absolute', right:5, bottom:40,       alignItems:'center'}}>
-        <TouchableOpacity 
-            // key={index}
-            onPress={decrement}
-            style={{marginRight:10, fontWeight:'bold', borderRadius:2, borderWidth:1, padding:5}}>                                
-            <Ionicons name="remove" size={20}/>
+      <Image
+        source={item.source}
+        style={styles.imageFlatlist}
+        resizeMode="cover"
+      />
+      <View
+        style={{
+          flexDirection: 'row',
+          position: 'absolute',
+          right: 5,
+          bottom: 40,
+          alignItems: 'center',
+        }}
+      >
+        <TouchableOpacity
+          onPress={() => decrement(item.id)}
+          style={{ marginRight: 10, borderRadius: 2, borderWidth: 1, padding: 5 }}
+        >
+          <Ionicons name="remove" size={20} />
         </TouchableOpacity>
-
-        <Text style={{fontSize:15, fontWeight:'bold', borderRadius:2, borderWidth:1, padding:10, marginRight:10, color:'blue'}}>{count}</Text>
-            
-        <TouchableOpacity 
-            onPress={increment}
-            style={{marginRight:10, fontWeight:'bold', borderRadius:2, borderWidth:1, padding:5}}>                                
-            <Ionicons name="add" size={20}/>
+        <Text
+          style={{
+            fontSize: 15,
+            fontWeight: 'bold',
+            borderRadius: 2,
+            borderWidth: 1,
+            padding: 10,
+            marginRight: 10,
+            color: 'blue',
+          }}
+        >
+          {counts[item.id] || 0}
+        </Text>
+        <TouchableOpacity
+          onPress={() => increment(item.id)}
+          style={{ marginRight: 10, borderRadius: 2, borderWidth: 1, padding: 5 }}
+        >
+          <Ionicons name="add" size={20} />
         </TouchableOpacity>
-    </View>                
+      </View>
     </>
-  )
+  );
 
+  // Calculate total count for the cart
+  const totalCount = Object.values(counts).reduce((sum, count) => sum + (count || 0), 0);
 
   return (
     <>
-        <Text style={{fontWeight:'bold', marginTop:10, marginBottom:15}}>{label}</Text>
-        <View style={styles.cartStyleContainer}>
-            <TouchableOpacity
-                onPress={()=>handlePressModal()}
-            >
-                <Ionicons name="cart" size={30}/>
-            </TouchableOpacity>
+      <Text style={{ fontWeight: 'bold', marginTop: 10, marginBottom: 15 }}>{label}</Text>
+      <View style={styles.cartStyleContainer}>
 
-            <Text style={{color:'red', fontWeight:'bold', marginRight:30}}>{count}</Text>
+        <TouchableOpacity onPress={() => handlePressModal()}>
+          <Ionicons name="cart" size={30} />
+        </TouchableOpacity>
 
-            <TouchableOpacity onPress={reset} style={{backgroundColor:'grey', padding:5, borderRadius:5, marginRight:5}}>
-                <Text>Clear</Text>
-            </TouchableOpacity>
-        </View>
+        <Text style={{ color: 'red', fontWeight: 'bold', marginRight: 30 }}>
+          {totalCount}
+        </Text>
 
-        <GestureHandlerRootView style={styles.container}>
-
-        <FlatList
-            data={menuList}
-            keyExtractor={(item) => item.id}
-            renderItem={renderItem}
-        />
-        
-        {/* Expand */}
-        <TouchableOpacity onPress={() => bottomSheetRef.current.expand()}
-            style={{alignSelf:'center', padding:10}}
-          >
-            <Ionicons name="menu" size={30}/>
+        <TouchableOpacity
+          onPress={() => resetAll()} // Wrap in arrow function to prevent infinite loop
+          style={{ backgroundColor: 'grey', padding: 5, borderRadius: 5, marginRight: 5 }}
+        >
+          <Text>Clear</Text>
         </TouchableOpacity>
 
 
-        <BottomSheet
-        ref={bottomSheetRef}
-        index={0} // Start at the first snap point (25%)
-        snapPoints={snapPoints}
-        enablePanDownToClose={true} // Optional: Prevents closing by dragging down
+      </View>
+
+      <GestureHandlerRootView style={styles.container}>
+        <FlatList
+          data={menuListTest}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+        />
+
+        <TouchableOpacity
+          onPress={() => bottomSheetRef.current.expand()}
+          style={{ alignSelf: 'center', padding: 10 }}
         >
+          <Ionicons name="menu" size={30} />
+        </TouchableOpacity>
 
-            <BottomSheetView style={styles.contentContainer}>
-            <ScrollView 
-                contentContainerStyle={styles.contentContainer}
-                horizontal={true}
-                showsHorizontalScrollIndicator={false}
+        <BottomSheet
+          ref={bottomSheetRef}
+          index={0}
+          snapPoints={snapPoints}
+          enablePanDownToClose={true}
+        >
+          <BottomSheetView style={styles.contentContainer}>
+            <ScrollView
+              contentContainerStyle={styles.contentContainer}
+              horizontal={true}
+              showsHorizontalScrollIndicator={false}
             >
-            {images.map((images, index) => (
-                <TouchableOpacity 
-                    onPress={()=>handlePressFunc(index)}
-                    key={index}
-                >   
-                <Image
-                //   key={index}
-                source={images}
-                style={index === currentIndex ? styles.imageBlowUp : styles.image}
-                resizeMode="cover"
-                />
+              {images.map((image, index) => (
+                <TouchableOpacity
+                  onPress={() => handlePressFunc(index)}
+                  key={index}
+                >
+                  <Image
+                    source={image}
+                    style={index === currentIndex ? styles.imageBlowUp : styles.image}
+                    resizeMode="cover"
+                  />
                 </TouchableOpacity>
-
-            ))}
+              ))}
             </ScrollView>
 
             <View style={styles.dotsContainer}>
-                {images.map((_, index) => (
-                    <View
-                    key={index}
-                    style={[
-                        styles.dot,
-                        { backgroundColor: index === currentIndex ? '#ffca2b' : '#ccc' },
-                    ]}
-                    />
-                ))}
+              {images.map((_, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.dot,
+                    { backgroundColor: index === currentIndex ? '#ffca2b' : '#ccc' },
+                  ]}
+                />
+              ))}
             </View>
 
             <Image
-                source={menu[currentIndex]}
-                style={styles.imageBelow}
-                resizeMode="cover"
+              source={menu[currentIndex]}
+              style={styles.imageBelow}
+              resizeMode="cover"
             />
-            </BottomSheetView>
+          </BottomSheetView>
         </BottomSheet>
-        </GestureHandlerRootView>
+      </GestureHandlerRootView>
 
-
-        {/* <Modal
-            visible={modal}
-            animationType="slide"
-            transparent={true}
-            onRequestClose={()=>setModal(false)}
-        /> */}
+      {/* <Modal visible={modalCheckOutVisible} transparent onRequestClose={() => setModalCheckOutVisible(false)}>
+        <View style={styles.modalOverlay}>
+           <TouchableOpacity onPress={() => setModalCheckOutVisible(false)}>
+              <Text style={styles.closeText}>Close</Text>
+            </TouchableOpacity> 
+            <Text>Total:</Text>
+            <Text>{totalCount}</Text>
+        </View>
+      </Modal> */}
     </>
- 
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f0f0f0', // Background outside the sheet
+    backgroundColor: '#f0f0f0',
   },
   contentContainer: {
     padding: 5,
@@ -234,7 +245,7 @@ const styles = StyleSheet.create({
     height: 90,
     marginBottom: 10,
     borderRadius: 10,
-    borderWidth:1,
+    borderWidth: 1,
     marginRight: 10,
     marginLeft: 10,
   },
@@ -243,24 +254,24 @@ const styles = StyleSheet.create({
     height: 70,
     marginBottom: 25,
     borderRadius: 10,
-    borderWidth:1,
+    borderWidth: 1,
     marginRight: 25,
   },
   imageBlowUp: {
     width: 90,
     height: 90,
     borderRadius: 10,
-    borderWidth:1,
-    marginRight:10,
-    marginBottom:10,
+    borderWidth: 1,
+    marginRight: 10,
+    marginBottom: 10,
   },
   imageBelow: {
     width: 400,
     height: 200,
     marginBottom: 25,
     borderRadius: 10,
-    borderWidth:1,
-    padding:5,
+    borderWidth: 1,
+    padding: 5,
   },
   dotsContainer: {
     flexDirection: 'row',
@@ -272,7 +283,40 @@ const styles = StyleSheet.create({
     height: 12,
     borderRadius: 5,
     marginHorizontal: 5,
-    marginBottom: 10
+    marginBottom: 10,
   },
-  cartStyleContainer:{marginBottom:10, flexDirection:'row', position:'absolute', right:10, top:10, alignItems:'center'}
+  cartStyleContainer: {
+    marginBottom: 10,
+    flexDirection: 'row',
+    position: 'absolute',
+    right: 10,
+    top: 10,
+    alignItems: 'center',
+  },
+  modalOverlay: {
+    flex:1,
+    // backgroundColor: 'rgba(97, 187, 145, 0.8)',
+    backgroundColor: 'white',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: 10,
+    borderWidth: 1,
+    margin: 50,
+    marginTop: 180,
+    marginBottom:150
+  
+  },
+  modalClose: {
+    position: 'absolute',
+    top: 10,
+    right: 25,
+  },
+  closeText: {
+    position: 'absolute',
+    color: 'black',
+    fontSize: 20,
+    fontWeight: 'bold',
+    left: 90,
+    bottom: 130,
+  },
 });
