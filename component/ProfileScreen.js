@@ -13,7 +13,7 @@ export default function ProfileScreenComponent({navigation, route}){
     const { title } = useContext(ComponentContextStore);
     const { label, count, increment, decrement, reset } = useStore(); // Destructure state and actions
 
-    console.log(title);
+    // console.log(title);
     return(
         <View style={styles.container}>
             <TouchableOpacity
